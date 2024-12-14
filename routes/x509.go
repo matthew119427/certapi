@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -19,7 +19,7 @@ import (
 // GetCertificateInformationEncoded handler function for providing raw data to be parsed
 func GetCertificateInformationEncoded(c *gin.Context) {
 	query := c.Copy().Request.Body
-	data, err := ioutil.ReadAll(query)
+	data, err := io.ReadAll(query)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  false,
@@ -55,10 +55,10 @@ func GetCertificateInformationEncoded(c *gin.Context) {
 		}
 	}
 
-	keyUsages := []int{}
-	keyUsagesText := []string{}
-	extendedKeyUsages := []int{}
-	extendedKeyUsagesText := []string{}
+	var keyUsages []int
+	var keyUsagesText []string
+	var extendedKeyUsages []int
+	var extendedKeyUsagesText []string
 	for _, value := range certificate.ExtKeyUsage {
 		switch value {
 		case 0:
@@ -146,6 +146,8 @@ func GetCertificateInformationEncoded(c *gin.Context) {
 		}
 	case x509.Ed25519:
 		bitLength = ed25519.PublicKeySize
+	default:
+		panic("unhandled default case")
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -189,7 +191,7 @@ func GetCertificateInformationEncoded(c *gin.Context) {
 // GetCertificateInfo handler
 func GetCertificateInfo(c *gin.Context) {
 	query := c.Query("q")
-	resp, err := tls.Dial("tcp", query+":443", &tls.Config{InsecureSkipVerify: true, PreferServerCipherSuites: true})
+	resp, err := tls.Dial("tcp", query+":443", &tls.Config{InsecureSkipVerify: true})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  false,
@@ -227,10 +229,10 @@ func GetCertificateInfo(c *gin.Context) {
 		}
 	}
 
-	keyUsages := []int{}
-	keyUsagesText := []string{}
-	extendedKeyUsages := []int{}
-	extendedKeyUsagesText := []string{}
+	var keyUsages []int
+	var keyUsagesText []string
+	var extendedKeyUsages []int
+	var extendedKeyUsagesText []string
 	for _, value := range certificate.ExtKeyUsage {
 		switch value {
 		case 0:
@@ -316,6 +318,9 @@ func GetCertificateInfo(c *gin.Context) {
 		} else {
 			panic("expected ecdsa.PublicKey for type x509.ECDSA")
 		}
+	default:
+		// undefined behavior
+		panic("unhandled default case")
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -325,6 +330,7 @@ func GetCertificateInfo(c *gin.Context) {
 			"organization":       certificate.Subject.Organization,
 			"organizationalUnit": certificate.Subject.OrganizationalUnit,
 			"locality":           certificate.Subject.Locality,
+			"province":           certificate.Subject.Province,
 			"country":            certificate.Subject.Country,
 		},
 		"issuer": gin.H{
@@ -332,6 +338,7 @@ func GetCertificateInfo(c *gin.Context) {
 			"organization":       certificate.Issuer.Organization,
 			"organizationalUnit": certificate.Issuer.OrganizationalUnit,
 			"locality":           certificate.Issuer.Locality,
+			"province":           certificate.Issuer.Province,
 			"country":            certificate.Issuer.Country,
 		},
 		"root": gin.H{
